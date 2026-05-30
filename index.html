@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary Prediction Tool</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 32px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input, select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            grid-column: 1 / -1;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .results h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .predictions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .prediction-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .prediction-card h3 {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .prediction-card .amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .ensemble-card {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: none;
+        }
+
+        .ensemble-card h3 {
+            color: #e0e0e0;
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ensemble-card .amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 5px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border-left: 5px solid #3c3;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function SalaryPredictionApp() {
+            const [formData, setFormData] = React.useState({
+                work_year: 2024,
+                experience_level: 'SE',
+                employment_type: 'FT',
+                job_title: 'Data Scientist',
+                salary_currency: 'USD',
+                employee_residence: 'US',
+                remote_ratio: 100,
+                company_location: 'US',
+                company_size: 'L'
+            });
+
+            const [predictions, setPredictions] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: isNaN(value) ? value : parseInt(value)
+                }));
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const response = await axios.post('http://localhost:8000/predict', formData);
+                    setPredictions(response.data);
+                } catch (err) {
+                    setError('Failed to get predictions. Make sure the API server is running on localhost:8000');
+                    console.error(err);
+                }
+
+                setLoading(false);
+            };
+
+            return (
+                <div className="container">
+                    <h1>💼 Salary Prediction Tool</h1>
+
+                    <form onSubmit={handleSubmit} className="form-grid">
+                        <div className="form-group">
+                            <label>Work Year</label>
+                            <input
+                                type="number"
+                                name="work_year"
+                                value={formData.work_year}
+                                onChange={handleChange}
+                                min="2000"
+                                max="2030"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Experience Level</label>
+                            <select name="experience_level" value={formData.experience_level} onChange={handleChange}>
+                                <option value="EN">EN - Entry Level</option>
+                                <option value="MI">MI - Mid Level</option>
+                                <option value="SE">SE - Senior</option>
+                                <option value="EX">EX - Executive</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Employment Type</label>
+                            <select name="employment_type" value={formData.employment_type} onChange={handleChange}>
+                                <option value="FT">FT - Full Time</option>
+                                <option value="PT">PT - Part Time</option>
+                                <option value="CT">CT - Contract</option>
+                                <option value="FL">FL - Freelance</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Job Title</label>
+                            <input
+                                type="text"
+                                name="job_title"
+                                value={formData.job_title}
+                                onChange={handleChange}
+                                placeholder="e.g., Data Scientist"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Salary Currency</label>
+                            <input
+                                type="text"
+                                name="salary_currency"
+                                value={formData.salary_currency}
+                                onChange={handleChange}
+                                placeholder="e.g., USD"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Employee Residence</label>
+                            <input
+                                type="text"
+                                name="employee_residence"
+                                value={formData.employee_residence}
+                                onChange={handleChange}
+                                placeholder="e.g., US"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Remote Ratio (%)</label>
+                            <select name="remote_ratio" value={formData.remote_ratio} onChange={handleChange}>
+                                <option value="0">0% - On Site</option>
+                                <option value="50">50% - Hybrid</option>
+                                <option value="100">100% - Remote</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Company Location</label>
+                            <input
+                                type="text"
+                                name="company_location"
+                                value={formData.company_location}
+                                onChange={handleChange}
+                                placeholder="e.g., US"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Company Size</label>
+                            <select name="company_size" value={formData.company_size} onChange={handleChange}>
+                                <option value="S">S - Small</option>
+                                <option value="M">M - Medium</option>
+                                <option value="L">L - Large</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" disabled={loading}>
+                            {loading ? 'Predicting...' : 'Get Salary Prediction'}
+                        </button>
+                    </form>
+
+                    {error && <div className="error">{error}</div>}
+
+                    {predictions && (
+                        <div className="results">
+                            <h2>📊 Prediction Results</h2>
+                            <div className="predictions-grid">
+                                <div className="prediction-card">
+                                    <h3>Linear Regression</h3>
+                                    <div className="amount">${predictions.linear_regression.toLocaleString()}</div>
+                                </div>
+
+                                <div className="prediction-card">
+                                    <h3>Decision Tree</h3>
+                                    <div className="amount">${predictions.decision_tree.toLocaleString()}</div>
+                                </div>
+
+                                <div className="prediction-card">
+                                    <h3>XGBoost</h3>
+                                    <div className="amount">${predictions.xgboost.toLocaleString()}</div>
+                                </div>
+
+                                <div className="prediction-card">
+                                    <h3>Neural Network</h3>
+                                    <div className="amount">${predictions.neural_network.toLocaleString()}</div>
+                                </div>
+
+                                <div className="ensemble-card">
+                                    <h3>🎯 Final Ensemble Prediction</h3>
+                                    <div className="amount">${predictions.ensemble_prediction.toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<SalaryPredictionApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
